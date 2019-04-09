@@ -1,0 +1,24 @@
+{
+  "name": "mangacbz",
+  "version": "0.1.0",
+  "description": "Simple CBZer for manga stream",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tarrke/mangaCBZ.git"
+  },
+  "keywords": [
+    "Mange",
+    "CBZ",
+    "node"
+  ],
+  "author": "Tarrke",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Tarrke/mangaCBZ/issues"
+  },
+  "homepage": "https://github.com/Tarrke/mangaCBZ#readme"
+}
