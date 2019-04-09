@@ -1,5 +1,6 @@
 # Local Output
-images/
+images/*
+!images/.gitkeep
 
 # Logs
 logs
