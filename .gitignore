@@ -1,6 +1,8 @@
 # Local Output
 images/*
 !images/.gitkeep
+cbz/*
+!cbz/.gitkeep
 
 # Logs
 logs
