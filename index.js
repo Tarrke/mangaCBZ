@@ -26,7 +26,8 @@ function getImageFromChapter(uri, imageNumber, callback) {
     let next = '';
     let strImgNum = '000' + imageNumber;
     strImgNum = strImgNum.substring(strImgNum.length - 3);
-    let filename = 'images/image' + strImgNum + '.jpg';
+    let dirName = 'images/' + uri.split('/')[1];
+    let filename = dirName + '/image' + strImgNum + '.jpg';
     https.get(base_url + uri + '/' + imageNumber, (resp) => {
         let html = '';
         resp.on('data', (chunk) => {
@@ -50,13 +51,24 @@ function getImageFromChapter(uri, imageNumber, callback) {
 }
 
 function manageChapter(chapterURI, imageNumber = '1') {
+    let mangaName = chapterURI.split('/')[1];
+    let dirName = 'images/' + mangaName;
     // Manage FS
-    let files = fs.readdirSync('images');
+    if (!fs.existsSync(dirName)) {
+        console.log("Directory", dirName, "is not existing.");
+        fs.mkdirSync(dirName, { recursive: true });
+        return;
+    }
+    let files = fs.readdirSync(dirName);
     files.forEach((file) => {
         if (file == '.gitkeep') {
             return;
         }
-        fs.unlinkSync('images/' + file);
+        if( fs.lstatSync(dirName).isDirectory() ) {
+            console.log(file, 'is a directory, skipping...')
+            return;
+        }
+        fs.unlinkSync(dirName + '/' + file);
     });
 
     // Launch the getter
@@ -66,19 +78,19 @@ function manageChapter(chapterURI, imageNumber = '1') {
         console.log("DL Done.");
         console.log('Zipping files to cbz');
         var zip = new jszip();
-        let files = fs.readdirSync('images');
+        let files = fs.readdirSync(dirName);
         files.forEach((file) => {
             if (file == '.gitkeep') {
                 return;
             }
             console.log(file);
-            zip.file(file, fs.readFileSync('images/' + file));
+            zip.file(file, fs.readFileSync(dirName + '/' + file));
         });
         console.log('Directory read...');
         zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-            .pipe(fs.createWriteStream('cbz/chap' + chapNumber + '.cbz'))
+            .pipe(fs.createWriteStream('cbz/'+mangaName+'-chap' + chapNumber + '.cbz'))
             .on('finish', () => {
-                console.log("Chapter Ready for reading.");
+                console.log("Chapter Ready for reading :", 'cbz/'+mangaName+'-chap' + chapNumber + '.cbz');
             });
     });
 
@@ -101,7 +113,5 @@ function getFilesForChapter(chapterURI, imageNumber, callback) {
     });
 }
 
-manageChapter("/shokugeki-no-soma/1");
 manageChapter("/shokugeki-no-soma/2");
-manageChapter("/shokugeki-no-soma/3");
-manageChapter("/shokugeki-no-soma/4");
+
