@@ -17,8 +17,8 @@ function getImage(imageURL, filename, callback) {
         });
         resp.on('end', () => {
             fs.writeFileSync(filename, data.read());
+            callback();
         });
-        resp.on('close', callback);
     }).end();
 }
 
@@ -27,23 +27,60 @@ function getImageFromChapter(uri, imageNumber, callback) {
     let strImgNum = '000' + imageNumber;
     strImgNum = strImgNum.substring(strImgNum.length - 3);
     let dirName = 'images/' + uri.split('/')[1];
-    let filename = dirName + '/image' + strImgNum + '.jpg';
+    let chapNumber = uri.split('/')[2];
+    let filename = dirName + '/chap' + chapNumber + '-image' + strImgNum + '.jpg';
     https.get(base_url + uri + '/' + imageNumber, (resp) => {
         let html = '';
         resp.on('data', (chunk) => {
             html += chunk;
         });
         resp.on('end', () => {
-            // console.log(html);
             const $ = cheerio.load(html);
-            //console.log($('#imgholder a'));
-            console.log($('#imgholder a img')[0]['attribs']['src'])
-            let img_url = $('#imgholder a img')[0]['attribs']['src'];
+            if ($('.episode-table').length == 0) {
+                // Chapter not released yet
+                console.log('/!\\ This chapter seems to not be released yet.')
+                return;
+            }
+            let img_url = $('.episode-table #imgholder a img')[0]['attribs']['src'];
             next = $('#imgholder a')[0]['attribs']['href'];
-            getImage(img_url, filename, () => { });
+            getImage(img_url, filename, () => {
+                callback(next);
+            });
         });
-        resp.on('close', () => {
-            callback(next);
+    }).on('error', (err) => {
+        console.log('Error:', err.message);
+    });
+}
+
+function getFilesForChapter(chapterURI, imageNumber, callback) {
+    let chapNumber = chapterURI.split('/')[2];
+    getImageFromChapter(chapterURI, imageNumber, (next) => {
+        // console.log('Next Chapter Page:', next);
+        let chap = next.split("/");
+        if (chapNumber == chap[2]) {
+            // console.log('Same Chapter should continue');
+            getFilesForChapter(chapterURI, chap[3], callback)
+        } else {
+            callback();
+        }
+    });
+}
+
+function isChapterOut(uri, imageNumber, callback) {
+    https.get(base_url + uri + '/' + imageNumber, (resp) => {
+        let html = '';
+        resp.on('data', (chunk) => {
+            html += chunk;
+        });
+        resp.on('end', () => {
+            const $ = cheerio.load(html);
+            if ($('.episode-table').length == 0) {
+                // Chapter not released yet
+                console.log('/!\\ This chapter seems to not be released yet.')
+                return false;
+            }
+            callback();
+            return true;
         });
     }).on('error', (err) => {
         console.log('Error:', err.message);
@@ -53,65 +90,82 @@ function getImageFromChapter(uri, imageNumber, callback) {
 function manageChapter(chapterURI, imageNumber = '1') {
     let mangaName = chapterURI.split('/')[1];
     let dirName = 'images/' + mangaName;
+    let chapNumber = chapterURI.split('/')[2];
+    console.log('Chapter', chapNumber);
     // Manage FS
     if (!fs.existsSync(dirName)) {
         console.log("Directory", dirName, "is not existing.");
         fs.mkdirSync(dirName, { recursive: true });
         return;
     }
-    let files = fs.readdirSync(dirName);
-    files.forEach((file) => {
-        if (file == '.gitkeep') {
-            return;
-        }
-        if( fs.lstatSync(dirName).isDirectory() ) {
-            console.log(file, 'is a directory, skipping...')
-            return;
-        }
-        fs.unlinkSync(dirName + '/' + file);
-    });
-
     // Launch the getter
     getFilesForChapter(chapterURI, imageNumber, () => {
         let chapNumber = chapterURI.split('/')[2];
         // then we can do the zipping...
-        console.log("DL Done.");
-        console.log('Zipping files to cbz');
+        console.log('~ DL Done.');
+        console.log('~ Zipping files to cbz');
         var zip = new jszip();
         let files = fs.readdirSync(dirName);
+        let toClean = [];
         files.forEach((file) => {
             if (file == '.gitkeep') {
                 return;
             }
-            console.log(file);
+            if (!file.startsWith('chap' + chapNumber + '-')) {
+                // console.log("skipping file:", file);
+                return;
+            }
+            // console.log(file);
             zip.file(file, fs.readFileSync(dirName + '/' + file));
+            toClean.push(file);
         });
-        console.log('Directory read...');
+        console.log('~ Number of pages:', files.length);
+        // cleaning temporary files
+        toClean.forEach((file) => {
+            // console.log('Should clean:', file);
+            fs.unlinkSync(dirName + '/' + file);
+        });
+        // console.log('Directory read...');
         zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-            .pipe(fs.createWriteStream('cbz/'+mangaName+'-chap' + chapNumber + '.cbz'))
+            .pipe(fs.createWriteStream('cbz/' + mangaName + '-chap' + chapNumber + '.cbz'))
             .on('finish', () => {
-                console.log("Chapter Ready for reading :", 'cbz/'+mangaName+'-chap' + chapNumber + '.cbz');
+                console.log("~ Chapter Ready for reading :", 'cbz/' + mangaName + '-chap' + chapNumber + '.cbz');
             });
     });
 
 }
 
-function getFilesForChapter(chapterURI, imageNumber, callback) {
-    let chapNumber = chapterURI.split('/')[2];
-    getImageFromChapter(chapterURI, imageNumber, (next) => {
-        console.log('Next Chapter Page:', next);
-        let chap = next.split("/");
-        if (chapNumber == chap[2]) {
-            console.log('Same Chapter should continue');
-            getFilesForChapter(chapterURI, chap[3], callback)
-        } else {
-            callback();
-            /*
+function manageManga(mangaName) {
+    let mangaURL = '/' + mangaName + '/';
 
-            */
+    // lookup for files named after this manga:
+    let files = fs.readdirSync('cbz/');
+    let bestIndex = 0;
+    files.forEach((file) => {
+        if (file.startsWith(mangaName)) {
+            let idx = file.split('-');
+            let chapIndex = parseInt(idx[idx.length - 1].split('.')[0].substring(4), 10);
+            if (chapIndex > bestIndex) {
+                bestIndex = chapIndex;
+            }
         }
+    });
+    bestIndex = bestIndex + 1;
+    // DEBUG :
+    bestIndex = 305;
+    // Should we get this Chapter or is it the last one ?
+
+    // TODO: find the good logic here...
+    manageChapter(mangaURL + bestIndex);
+    bestIndex = bestIndex + 1;
+    isChapterOut(mangaURL + bestIndex, 1, () => {
+        
+        
     });
 }
 
-manageChapter("/shokugeki-no-soma/2");
+
+manageManga("shokugeki-no-soma");
+
+
 
