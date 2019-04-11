@@ -90,6 +90,7 @@ function isChapterOut(uri, imageNumber, callback) {
 function manageChapter(chapterURI, imageNumber = '1') {
     let mangaName = chapterURI.split('/')[1];
     let dirName = 'images/' + mangaName;
+    let cbzDirName = 'cbz/' + mangaName;
     let chapNumber = chapterURI.split('/')[2];
     console.log('Chapter', chapNumber);
     // Manage FS
@@ -126,9 +127,9 @@ function manageChapter(chapterURI, imageNumber = '1') {
         });
         // console.log('Directory read...');
         zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-            .pipe(fs.createWriteStream('cbz/' + mangaName + '-chap' + chapNumber + '.cbz'))
+            .pipe(fs.createWriteStream(cbzDirName + '/' + mangaName + '-chap' + chapNumber + '.cbz'))
             .on('finish', () => {
-                console.log("~ Chapter Ready for reading :", 'cbz/' + mangaName + '-chap' + chapNumber + '.cbz');
+                console.log("~ Chapter Ready for reading :", cbzDirName + '/' + mangaName + '-chap' + chapNumber + '.cbz');
             });
         // Launch the next chapter:
         manageChapter(nextChapterUri, 1)
@@ -140,7 +141,12 @@ function manageManga(mangaName) {
     let mangaURL = '/' + mangaName + '/';
 
     // lookup for files named after this manga:
-    let files = fs.readdirSync('cbz/');
+    let cbzDirName = 'cbz/' + mangaName;
+    if (!fs.existsSync(cbzDirName)) {
+        console.log("Directory", cbzDirName, "is not existing, creating...");
+        fs.mkdirSync(cbzDirName, { recursive: true });
+    }
+    let files = fs.readdirSync(cbzDirName);
     let bestIndex = 0;
     files.forEach((file) => {
         if (file.startsWith(mangaName)) {
@@ -160,7 +166,5 @@ function manageManga(mangaName) {
 
 
 manageManga("shokugeki-no-soma");
-/*
-manageManga("hunter-x-hunter")
-manageManga("one-piece")
-*/
+manageManga("hunter-x-hunter");
+manageManga("one-piece");
