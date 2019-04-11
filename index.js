@@ -94,9 +94,8 @@ function manageChapter(chapterURI, imageNumber = '1') {
     console.log('Chapter', chapNumber);
     // Manage FS
     if (!fs.existsSync(dirName)) {
-        console.log("Directory", dirName, "is not existing.");
+        console.log("Directory", dirName, "is not existing, creating...");
         fs.mkdirSync(dirName, { recursive: true });
-        return;
     }
     // Launch the getter
     getFilesForChapter(chapterURI, imageNumber, (nextChapterUri) => {
@@ -159,8 +158,9 @@ function manageManga(mangaName) {
 }
 
 
+
 manageManga("shokugeki-no-soma");
+/*
 manageManga("hunter-x-hunter")
-
-
-
+manageManga("one-piece")
+*/
