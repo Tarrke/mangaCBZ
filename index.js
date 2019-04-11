@@ -55,13 +55,13 @@ function getImageFromChapter(uri, imageNumber, callback) {
 function getFilesForChapter(chapterURI, imageNumber, callback) {
     let chapNumber = chapterURI.split('/')[2];
     getImageFromChapter(chapterURI, imageNumber, (next) => {
-        // console.log('Next Chapter Page:', next);
+        console.log('Next Chapter Page:', next);
         let chap = next.split("/");
         if (chapNumber == chap[2]) {
             // console.log('Same Chapter should continue');
             getFilesForChapter(chapterURI, chap[3], callback)
         } else {
-            callback();
+            callback(next);
         }
     });
 }
@@ -99,7 +99,7 @@ function manageChapter(chapterURI, imageNumber = '1') {
         return;
     }
     // Launch the getter
-    getFilesForChapter(chapterURI, imageNumber, () => {
+    getFilesForChapter(chapterURI, imageNumber, (nextChapterUri) => {
         let chapNumber = chapterURI.split('/')[2];
         // then we can do the zipping...
         console.log('~ DL Done.');
@@ -131,6 +131,8 @@ function manageChapter(chapterURI, imageNumber = '1') {
             .on('finish', () => {
                 console.log("~ Chapter Ready for reading :", 'cbz/' + mangaName + '-chap' + chapNumber + '.cbz');
             });
+        // Launch the next chapter:
+        manageChapter(nextChapterUri, 1)
     });
 
 }
@@ -151,17 +153,9 @@ function manageManga(mangaName) {
         }
     });
     bestIndex = bestIndex + 1;
-    // DEBUG :
-    bestIndex = 305;
+    
     // Should we get this Chapter or is it the last one ?
-
-    // TODO: find the good logic here...
     manageChapter(mangaURL + bestIndex);
-    bestIndex = bestIndex + 1;
-    isChapterOut(mangaURL + bestIndex, 1, () => {
-        
-        
-    });
 }
 
 
