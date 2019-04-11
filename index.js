@@ -153,13 +153,14 @@ function manageManga(mangaName) {
         }
     });
     bestIndex = bestIndex + 1;
-    
+
     // Should we get this Chapter or is it the last one ?
     manageChapter(mangaURL + bestIndex);
 }
 
 
 manageManga("shokugeki-no-soma");
+manageManga("hunter-x-hunter")
 
 
 
