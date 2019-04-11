@@ -9,6 +9,11 @@ Caution: this is ES6 code style, should be launch with :
 $ node -r esm index.js
 ```
 
+Alternative :
+```bash
+$ npm start
+```
+
 ## Configuration
 
 At the end of index.js enter as many series you want to get. Caution this will get all the chapters from start to end...
